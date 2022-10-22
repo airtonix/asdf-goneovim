@@ -40,9 +40,10 @@ download_release() {
   os=$(get_machine_os)
 
   [ -f "${filename}" ] || {
-    url="${GH_REPO}/releases/download/v${version}/${TOOL_NAME}-v${version}-$(get_machine_os).tar.gz"
+    url="${GH_REPO}/releases/download/v${version}/${TOOL_NAME}-v${version}-$(get_machine_os).tar.bz2"
 
     echo "* Downloading ${TOOL_NAME} release ${version} (${os})..."
+    echo "* from ${url}"
 
     curl "${curl_opts[@]}" -o "${filename}" -C - "${url}" || fail "Could not download ${url}"
   }
