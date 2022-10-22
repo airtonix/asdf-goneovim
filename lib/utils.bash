@@ -2,13 +2,12 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for goneovim.
 GH_REPO="https://github.com/akiyosi/goneovim"
 TOOL_NAME="goneovim"
 TOOL_TEST="goneovim --help"
 
 fail() {
-  echo -e "asdf-$TOOL_NAME: $*"
+  echo -e "asdf-${TOOL_NAME}: $*"
   exit 1
 }
 
@@ -16,7 +15,7 @@ curl_opts=(-fsSL)
 
 # NOTE: You might want to remove this if goneovim is not hosted on GitHub releases.
 if [ -n "${GITHUB_API_TOKEN:-}" ]; then
-  curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
+  curl_opts=("${curl_opts[@]}" -H "Authorization: token ${GITHUB_API_TOKEN}")
 fi
 
 sort_versions() {
@@ -25,14 +24,12 @@ sort_versions() {
 }
 
 list_github_tags() {
-  git ls-remote --tags --refs "$GH_REPO" |
+  git ls-remote --tags --refs "${GH_REPO}" |
     grep -o 'refs/tags/.*' | cut -d/ -f3- |
     sed 's/^v//' # NOTE: You might want to adapt this sed to remove non-version strings from tags
 }
 
 list_all_versions() {
-  # TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-  # Change this function if goneovim has other means of determining installable versions.
   list_github_tags
 }
 
@@ -40,12 +37,15 @@ download_release() {
   local version filename url
   version="$1"
   filename="$2"
+  os=$(get_machine_os)
 
-  # TODO: Adapt the release URL convention for goneovim
-  url="$GH_REPO/archive/v${version}.tar.gz"
+  [ -f "${filename}" ] || {
+    url="${GH_REPO}/releases/download/v${version}/${TOOL_NAME}-v${version}-$(get_machine_os).tar.gz"
 
-  echo "* Downloading $TOOL_NAME release $version..."
-  curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
+    echo "* Downloading ${TOOL_NAME} release ${version} (${os})..."
+
+    curl "${curl_opts[@]}" -o "${filename}" -C - "${url}" || fail "Could not download ${url}"
+  }
 }
 
 install_version() {
@@ -53,22 +53,29 @@ install_version() {
   local version="$2"
   local install_path="${3%/bin}/bin"
 
-  if [ "$install_type" != "version" ]; then
-    fail "asdf-$TOOL_NAME supports release installs only"
+  if [ "${install_type}" != "version" ]; then
+    fail "asdf-${TOOL_NAME} supports release installs only"
   fi
 
   (
-    mkdir -p "$install_path"
-    cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
+    mkdir -p "${{install_path}}"
+    cp -r "${ASDF_DOWNLOAD_PATH}"/* "${install_path}"
 
-    # TODO: Assert goneovim executable exists.
     local tool_cmd
-    tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
-    test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
+    tool_cmd="$(echo "${TOOL_TEST}" | cut -d' ' -f1)"
+    test -x "${install_path}/${tool_cmd}" || fail "Expected ${install_path}/${tool_cmd} to be executable."
 
-    echo "$TOOL_NAME $version installation was successful!"
+    echo "${TOOL_NAME} ${version} installation was successful!"
   ) || (
-    rm -rf "$install_path"
-    fail "An error occurred while installing $TOOL_NAME $version."
+    rm -rf "${install_path}"
+    fail "An error occurred while installing ${TOOL_NAME} ${version}."
   )
+}
+
+get_machine_os() {
+  case "${OSTYPE}" in
+  darwin*) echo "darwin" ;;
+  linux*) echo "linux" ;;
+  *) echo "${OSTYPE}" ;;
+  esac
 }
